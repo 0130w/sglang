@@ -179,6 +179,8 @@ pub struct BatchHeader {
     pub hidden_reqlens: Vec<u32>,
     #[serde(default)]
     pub hidden_poslens: Vec<u32>,
+    #[serde(default)]
+    pub cached_tokens: Vec<u32>,
 }
 
 /// Read a request's flat logprob column (`l` val/idx pairs) from `data` at cursors
@@ -290,6 +292,7 @@ pub fn for_each_chunk(body: &[u8], mut route: impl FnMut(ChunkEvent)) -> Decoded
         || !per_req_ok(&h.out_tokids_lp_reqlens)
         || !per_req_ok(&h.in_tokids_lp_reqlens)
         || !per_req_ok(&h.hidden_reqlens)
+        || !per_req_ok(&h.cached_tokens)
     {
         reject!()
     }
@@ -465,6 +468,7 @@ pub fn for_each_chunk(body: &[u8], mut route: impl FnMut(ChunkEvent)) -> Decoded
             token_ids,
             finish_reason: h.finish_reasons.get(i).cloned().flatten(),
             prompt_tokens: h.prompt_tokens.get(i).copied().unwrap_or(0),
+            cached_tokens: h.cached_tokens.get(i).copied().unwrap_or(0),
             extras,
             // Listed explicitly, NOT `..Default::default()`: a new column added to
             // `ChunkEvent` and wired into the response must fail to compile here
@@ -568,6 +572,8 @@ pub struct ChunkEvent {
     pub finish_reason: Option<FinishReason>,
     /// Prompt token count for this request (constant across its chunks).
     pub prompt_tokens: u32,
+    /// Cached input token count for this request.
+    pub cached_tokens: u32,
     /// Decoded text **delta** for this chunk (empty in skip mode / on partial UTF-8),
     /// filled by the detok shard. `token_ids` doubles as `output_ids`;
     /// `completion_tokens` is this chunk's count.
@@ -1187,6 +1193,40 @@ mod tests {
             sz <= 144,
             "ChunkEvent grew to {sz} bytes; keep rare columns behind ChunkExtras"
         );
+    }
+
+    #[test]
+    fn decodes_cached_tokens() {
+        let header = BatchHeader {
+            rids: vec!["reqA".into(), "reqB".into()],
+            finish_reasons: vec![None, None],
+            prompt_tokens: vec![100, 200],
+            cached_tokens: vec![80, 0],
+            tok_lens: vec![2, 1],
+            ..Default::default()
+        };
+        let header = rmp_serde::to_vec(&header).unwrap();
+        let data: Vec<u8> = [11i64, 42, 3]
+            .iter()
+            .flat_map(|token| token.to_le_bytes())
+            .collect();
+
+        let framed = frame_decode_batch_cols(&header, &[&data]);
+
+        let mut events = Vec::new();
+        let decoded = for_each_chunk(&framed[1..], |event| {
+            events.push(event);
+        });
+        assert!(decoded.ok);
+        assert_eq!(events.len(), 2);
+
+        assert_eq!(events[0].rid, Rid::from("reqA"));
+        assert_eq!(events[0].token_ids, vec![11, 42]);
+        assert_eq!(events[0].cached_tokens, 80);
+
+        assert_eq!(events[1].rid, Rid::from("reqB"));
+        assert_eq!(events[1].token_ids, vec![3]);
+        assert_eq!(events[1].cached_tokens, 0);
     }
 }
 

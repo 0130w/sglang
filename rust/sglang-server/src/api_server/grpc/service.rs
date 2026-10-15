@@ -254,6 +254,7 @@ mod tests {
             token_ids: vec![token_id],
             finish_reason: finished.then(stop_reason),
             prompt_tokens: 3,
+            cached_tokens: 2,
             text: text.into(),
             completion_tokens: 1,
             extras: None,
@@ -361,6 +362,7 @@ mod tests {
         let first_meta = meta(&first);
         assert_eq!(first_meta.id, "request-1");
         assert_eq!(first_meta.prompt_tokens, 3);
+        assert_eq!(first_meta.cached_tokens, 2);
         assert_eq!(first_meta.completion_tokens, 1);
         assert!(first_meta.finish_reason.is_none());
         assert!(first_meta.e2e_latency.is_none());
@@ -374,6 +376,7 @@ mod tests {
         assert_eq!(output_ids(&finished), [1, 2]);
         let finished_meta = meta(&finished);
         assert_eq!(finished_meta.completion_tokens, 2);
+        assert_eq!(finished_meta.cached_tokens, 2);
         assert!(matches!(
             finished_meta.finish_reason,
             Some(api::FinishReason {

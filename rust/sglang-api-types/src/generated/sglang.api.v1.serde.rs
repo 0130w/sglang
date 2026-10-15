@@ -2073,6 +2073,11 @@ impl ::serde::Serialize for GenerateMetaInfo {
         if let Some(v) = &self.e2e_latency {
             ::serde::ser::SerializeMap::serialize_entry(&mut map, "e2e_latency", v)?;
         }
+        ::serde::ser::SerializeMap::serialize_entry(
+            &mut map,
+            "cached_tokens",
+            &self.cached_tokens,
+        )?;
         ::serde::ser::SerializeMap::end(map)
     }
 }
@@ -2101,6 +2106,7 @@ impl<'de> ::serde::Deserialize<'de> for GenerateMetaInfo {
                 let mut f_input_token_ids_logprobs = None;
                 let mut f_hidden_states = None;
                 let mut f_e2e_latency = None;
+                let mut f_cached_tokens = None;
                 while let Some(key) = map.next_key::<::std::borrow::Cow<'_, str>>()? {
                     match key.as_ref() {
                         "id" => {
@@ -2206,6 +2212,12 @@ impl<'de> ::serde::Deserialize<'de> for GenerateMetaInfo {
                             }
                             f_e2e_latency = Some(map.next_value::<Option<f64>>()?);
                         }
+                        "cached_tokens" => {
+                            if f_cached_tokens.is_some() {
+                                return Err(::serde::de::Error::duplicate_field("cached_tokens"));
+                            }
+                            f_cached_tokens = Some(map.next_value::<u32>()?);
+                        }
                         _ => {
                             map.next_value::<::serde::de::IgnoredAny>()?;
                         }
@@ -2224,6 +2236,7 @@ impl<'de> ::serde::Deserialize<'de> for GenerateMetaInfo {
                     input_token_ids_logprobs: f_input_token_ids_logprobs.unwrap_or_default(),
                     hidden_states: f_hidden_states.unwrap_or_default(),
                     e2e_latency: f_e2e_latency.flatten(),
+                    cached_tokens: f_cached_tokens.unwrap_or_default(),
                 })
             }
         }

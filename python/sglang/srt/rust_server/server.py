@@ -491,7 +491,10 @@ class RustServer:
             for extra in extras:
                 header_cols += extra.header_cols()
                 data_cols += extra.data_cols()
+        else:
+            header_cols.extend([[] for _ in range(12)])
 
+        header_cols.append(payload.cached_tokens)
         header = msgspec.msgpack.encode(header_cols)
         # Pass the raw column list; the Rust side concatenates it into the frame
         # with the GIL released.

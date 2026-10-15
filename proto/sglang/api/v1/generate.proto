@@ -126,6 +126,7 @@ message GenerateMetaInfo {
   // Seconds from normalized-request acceptance to the terminal output; only
   // on the terminal frame.
   optional double e2e_latency = 12;
+  uint32 cached_tokens = 13;
 }
 
 message GenerateResponse {

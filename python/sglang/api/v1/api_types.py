@@ -301,6 +301,7 @@ class GenerateMetaInfo(msgspec.Struct, kw_only=True, frozen=True):
     input_token_ids_logprobs: List[NullableTopLogprobs] = []
     hidden_states: List[HiddenStateRow] = []
     e2e_latency: Optional[float] = None
+    cached_tokens: int = 0
 
     @classmethod
     def from_json_value(cls, value: Any) -> "GenerateMetaInfo":
@@ -1252,6 +1253,8 @@ def decode_GenerateMetaInfo(value: Any) -> GenerateMetaInfo:
             kw["hidden_states"] = [] if x is None else [decode_HiddenStateRow(e) for e in _expect_seq(x, expected="a sequence")]
         elif key == "e2e_latency":
             kw["e2e_latency"] = None if x is None else _expect_float(x, expected="f64")
+        elif key == "cached_tokens":
+            kw["cached_tokens"] = _expect_uint(x, expected="u32")
     return GenerateMetaInfo(**kw)
 
 
@@ -1277,6 +1280,7 @@ def encode_GenerateMetaInfo(v: GenerateMetaInfo) -> Dict[str, Any]:
         d["hidden_states"] = [encode_HiddenStateRow(e) for e in v.hidden_states]
     if v.e2e_latency is not None:
         d["e2e_latency"] = float(v.e2e_latency)
+    d["cached_tokens"] = v.cached_tokens
     return d
 
 

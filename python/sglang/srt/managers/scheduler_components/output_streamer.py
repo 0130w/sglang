@@ -478,6 +478,7 @@ class _GenerationStreamAccumulator:
             pack_beam_search_output(req) if req.beam_group is not None else None
         )
         self.beam_search_output.append(beam_output)
+        self.cached_tokens.append(req.cached_tokens)
 
         if not self.rust_server_mode:
             # Everything below feeds the Python DetokenizerManager /
@@ -504,7 +505,6 @@ class _GenerationStreamAccumulator:
                 if beam_output is not None
                 else len(output_ids_)
             )
-            self.cached_tokens.append(req.cached_tokens)
 
             # Collect detailed cache breakdown if available
             self.cached_tokens_details.append(self.get_cached_tokens_details(req))
